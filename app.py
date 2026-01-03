@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 import random
+import os
 
 app = Flask(__name__)
 
@@ -68,7 +69,7 @@ INTENTS = {
         "keywords": ["what can you do", "help"],
         "responses": [
             "I can respond to emotions and demo questions.",
-            "I simulate an empathetic AI chatbot for demos."
+            "I simulate an empathetic chatbot for demos."
         ]
     },
     "thanks": {
@@ -87,6 +88,7 @@ INTENTS = {
     }
 }
 
+# 🌐 Routes
 @app.route("/")
 def home():
     return send_from_directory(".", "index.html")
@@ -97,9 +99,13 @@ def style():
 
 @app.route("/get", methods=["POST"])
 def chatbot_response():
-    user_msg = request.json["msg"].lower().strip()
+    data = request.get_json(silent=True)
+    if not data or "msg" not in data:
+        return jsonify({"reply": "I didn’t catch that 🤔"})
 
-    # 🔍 Emotion detection first
+    user_msg = data["msg"].lower().strip()
+
+    # 🔍 Emotion detection
     for emotion in EMOTIONS.values():
         for keyword in emotion["keywords"]:
             if keyword in user_msg:
@@ -107,7 +113,7 @@ def chatbot_response():
                     "reply": random.choice(emotion["responses"])
                 })
 
-    # 🔍 General intent detection
+    # 🔍 Intent detection
     for intent in INTENTS.values():
         for keyword in intent["keywords"]:
             if keyword in user_msg:
@@ -124,5 +130,7 @@ def chatbot_response():
         ])
     })
 
+# 🚀 Deployment-ready run
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
