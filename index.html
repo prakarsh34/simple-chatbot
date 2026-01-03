@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Emotion-Aware Chatbot</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        🤖 Emotion-Aware Chatbot
+        <span class="status">● Online</span>
+    </div>
+
+    <div id="chat-box" class="chat-box">
+        <div class="bot-bubble">
+            Hi! 👋 How are you feeling today?
+            <div class="meta">00:00</div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input
+            type="text"
+            id="user-input"
+            placeholder="Share your thoughts..."
+            onkeydown="if(event.key==='Enter') sendMessage()"
+        />
+        <button onclick="sendMessage()">➤</button>
+    </div>
+</div>
+
+<script>
+function getTime() {
+    const now = new Date();
+    return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function sendMessage() {
+    const input = document.getElementById("user-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    const chatBox = document.getElementById("chat-box");
+    const time = getTime();
+
+    // USER MESSAGE
+    const userBubble = document.createElement("div");
+    userBubble.className = "user-bubble";
+    userBubble.innerHTML = `
+        ${message}
+        <div class="meta">${time} <span class="ticks">✓</span></div>
+    `;
+    chatBox.appendChild(userBubble);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    input.value = "";
+
+    // Delivered ✓✓
+    setTimeout(() => {
+        userBubble.querySelector(".ticks").innerText = "✓✓";
+    }, 600);
+
+    // TYPING INDICATOR
+    const typingBubble = document.createElement("div");
+    typingBubble.className = "bot-bubble typing";
+    typingBubble.innerHTML = `<span></span><span></span><span></span>`;
+    chatBox.appendChild(typingBubble);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    fetch("/get", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ msg: message })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const reply = data.reply;
+        const delay = Math.min(2000, 600 + reply.length * 20);
+
+        setTimeout(() => {
+            // Remove typing
+            typingBubble.remove();
+
+            // BOT MESSAGE (NEW BUBBLE)
+            const botBubble = document.createElement("div");
+            botBubble.className = "bot-bubble";
+            botBubble.innerHTML = `
+                <span class="text"></span>
+                <div class="meta">${getTime()}</div>
+            `;
+            chatBox.appendChild(botBubble);
+
+            typeText(botBubble.querySelector(".text"), reply);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, delay);
+    })
+    .catch(() => {
+        typingBubble.remove();
+        chatBox.innerHTML += `
+            <div class="bot-bubble">
+                ⚠️ Error contacting server
+                <div class="meta">${getTime()}</div>
+            </div>
+        `;
+    });
+}
+
+// TYPEWRITER EFFECT
+function typeText(element, text) {
+    let i = 0;
+    const speed = 30 + Math.random() * 20;
+
+    function type() {
+        if (i < text.length) {
+            element.innerHTML += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+        }
+    }
+    type();
+}
+</script>
+
+</body>
+</html>
